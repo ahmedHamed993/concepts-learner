@@ -55,7 +55,6 @@ const navGroups: { label: string; items: NavItem[] }[] = [
 const pageTitles: { match: (path: string) => boolean; title: string }[] = [
   { match: (path) => path === "/", title: "Learning Roadmap" },
   { match: (path) => path === "/roadmap", title: "Learning Roadmap" },
-  { match: (path) => path.startsWith("/concepts"), title: "Concept" },
   { match: (path) => path.startsWith("/prompts"), title: "AI Prompt Library" },
   { match: (path) => path.startsWith("/settings"), title: "Settings" },
 ];
@@ -147,8 +146,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 const active =
                   item.href === "/"
                     ? pathname === "/" ||
-                      pathname === "/roadmap" ||
-                      pathname.startsWith("/concepts")
+                      pathname === "/roadmap"
                     : pathname.startsWith(item.href);
                 const Icon = item.icon;
                 return (

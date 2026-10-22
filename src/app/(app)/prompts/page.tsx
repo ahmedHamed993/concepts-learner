@@ -554,7 +554,7 @@ function PromptLibrary() {
                 <div className="mt-3 rounded-md border border-primary/20 bg-primary-soft/50 p-2.5">
                   <p className="font-mono text-[9px] uppercase tracking-wider text-primary">Roadmap context</p>
                   <Link
-                    href={`/roadmap?q=${encodeURIComponent(linkedTopic.title)}`}
+                    href="/"
                     className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium hover:underline"
                   >
                     {linkedTopic.title} <ArrowRight size={10} />

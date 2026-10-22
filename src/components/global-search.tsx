@@ -47,7 +47,7 @@ export function GlobalSearch() {
         type: "concept" as const,
         title: concept.name,
         description: concept.description,
-        href: `/concepts/${concept.id}`,
+        href: `/#category-${concept.categoryId}`,
         meta: categoryById.get(concept.categoryId)?.title ?? "Concept",
       }));
 

@@ -1,7 +1,6 @@
 "use client";
 
-import { useDeferredValue, useMemo, useState } from "react";
-import Link from "next/link";
+import { useMemo, useState } from "react";
 import {
   BookOpen,
   Check,
@@ -9,10 +8,8 @@ import {
   ClipboardList,
   FolderGit2,
   Lightbulb,
-  Search,
   Sparkles,
   Target,
-  X,
 } from "lucide-react";
 import { Modal } from "@/components/modal";
 import { CopyPromptButton } from "@/components/copy-prompt-button";
@@ -21,8 +18,6 @@ import {
   Badge,
   buttonClass,
   Card,
-  EmptyState,
-  Input,
   PageHeader,
   ProgressBar,
 } from "@/components/ui";
@@ -35,24 +30,14 @@ import {
   categoryById,
   conceptCategories,
   concepts,
-  filterConcepts,
   getConcept,
   getProjectMilestone,
-  type ConceptCategoryId,
   type LearningConcept,
 } from "@/lib/learning-concepts";
 import { cn } from "@/lib/utils";
 
-type CategoryFilter = ConceptCategoryId | "all";
 type ResourceKind = "prompt" | "exercises" | "projects";
 type ResourceState = { kind: ResourceKind; conceptId: string } | null;
-
-const categoryCounts = new Map<ConceptCategoryId, number>(
-  conceptCategories.map((category) => [
-    category.id,
-    concepts.filter((concept) => concept.categoryId === category.id).length,
-  ]),
-);
 
 function difficultyVariant(difficulty: string) {
   if (difficulty === "foundational") return "success" as const;
@@ -112,17 +97,14 @@ function ConceptRow({
         </span>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
-            <Link
-              href={`/concepts/${concept.id}`}
+            <span
               className={cn(
-                "text-[13px] font-semibold leading-5 transition-colors",
-                completed
-                  ? "text-muted line-through"
-                  : "text-foreground hover:text-primary",
+                "text-[13px] font-semibold leading-5",
+                completed ? "text-muted line-through" : "text-foreground",
               )}
             >
               {concept.name}
-            </Link>
+            </span>
             <Badge
               variant={difficultyVariant(concept.difficulty)}
               className="px-1.5 text-[9px] capitalize"
@@ -343,13 +325,12 @@ function ProjectsBody({ concept }: { concept: LearningConcept }) {
                   Related concepts
                 </span>
                 {related.map((item) => (
-                  <Link
+                  <span
                     key={item.id}
-                    href={`/concepts/${item.id}`}
-                    className="rounded border border-border bg-surface px-1.5 py-0.5 text-[10px] text-muted transition-colors hover:border-primary/30 hover:text-primary"
+                    className="rounded border border-border bg-surface px-1.5 py-0.5 text-[10px] text-muted"
                   >
                     {item.name}
-                  </Link>
+                  </span>
                 ))}
               </div>
             ) : null}
@@ -360,41 +341,27 @@ function ProjectsBody({ concept }: { concept: LearningConcept }) {
   );
 }
 
-export function ConceptRoadmap({ initialQuery = "" }: { initialQuery?: string }) {
+export function ConceptRoadmap() {
   const { state, ready, setConceptCompleted } = useApp();
-  const [query, setQuery] = useState(initialQuery);
-  const [category, setCategory] = useState<CategoryFilter>("all");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [resource, setResource] = useState<ResourceState>(null);
-  const deferredQuery = useDeferredValue(query);
-
-  const filtered = useMemo(
-    () => filterConcepts(deferredQuery, category),
-    [category, deferredQuery],
-  );
 
   const grouped = useMemo(
     () =>
       conceptCategories
         .map((group) => ({
           category: group,
-          items: filtered.filter((concept) => concept.categoryId === group.id),
+          items: concepts.filter((concept) => concept.categoryId === group.id),
         }))
         .filter((group) => group.items.length > 0),
-    [filtered],
+    [],
   );
 
   const overall = conceptCompletion(state);
-  const hasFilters = Boolean(query || category !== "all");
   const activeConcept = resource ? getConcept(resource.conceptId) : undefined;
   const activeCategory = activeConcept
     ? categoryById.get(activeConcept.categoryId)
     : undefined;
-
-  const reset = () => {
-    setQuery("");
-    setCategory("all");
-  };
 
   const closeResource = () => setResource(null);
 
@@ -411,210 +378,95 @@ export function ConceptRoadmap({ initialQuery = "" }: { initialQuery?: string })
         }
       />
 
-      <div className="mb-4 rounded-xl border border-border bg-surface p-3">
-        <div className="mb-2.5 flex items-center justify-between gap-3 text-[10px] text-subtle">
-          <span className="font-mono uppercase tracking-[0.12em]">
-            Overall completion
-          </span>
-          <span className="font-mono">
-            {overall.completed} of {overall.total} concepts
-          </span>
-        </div>
-        <ProgressBar
-          value={overall.percent}
-          className="h-1"
-          label="Overall roadmap completion"
-        />
-
-        <div className="mt-3 flex flex-col gap-2.5 sm:flex-row sm:items-center">
-          <div className="relative min-w-0 flex-1">
-            <Search
-              size={14}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-subtle"
-            />
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search concepts by name or description..."
-              className="h-9 pl-9 pr-9 text-xs"
-              aria-label="Search concepts"
-            />
-            {query ? (
-              <button
-                type="button"
-                onClick={() => setQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-subtle hover:text-foreground"
-                aria-label="Clear concept search"
-              >
-                <X size={13} />
-              </button>
-            ) : null}
-          </div>
-          <div className="flex items-center gap-1.5 text-[10px] text-subtle">
-            <span className="font-mono uppercase tracking-[0.12em]">
-              {filtered.length} visible
-            </span>
-          </div>
-        </div>
-
-        <div
-          className="mt-2.5 flex flex-wrap items-center gap-1.5"
-          role="group"
-          aria-label="Filter concepts by category"
-        >
-          <button
-            type="button"
-            onClick={() => setCategory("all")}
-            aria-pressed={category === "all"}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
-              category === "all"
-                ? "border-primary/30 bg-primary-soft text-primary"
-                : "border-border bg-surface text-muted hover:border-border-strong hover:text-foreground",
-            )}
-          >
-            All
-            <span className="font-mono text-[9px] opacity-70">
-              {concepts.length}
-            </span>
-          </button>
-          {conceptCategories.map((group) => (
-            <button
-              key={group.id}
-              type="button"
-              onClick={() => setCategory(group.id)}
-              aria-pressed={category === group.id}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
-                category === group.id
-                  ? "border-primary/30 bg-primary-soft text-primary"
-                  : "border-border bg-surface text-muted hover:border-border-strong hover:text-foreground",
-              )}
-            >
-              {group.title}
-              <span className="font-mono text-[9px] opacity-70">
-                {categoryCounts.get(group.id)}
-              </span>
-            </button>
-          ))}
-          {hasFilters ? (
-            <button
-              type="button"
-              onClick={reset}
-              className="ml-1 inline-flex items-center gap-1 px-1 py-1 text-[10px] text-muted hover:text-foreground"
-            >
-              <X size={11} /> Clear
-            </button>
-          ) : null}
-        </div>
-      </div>
-
       {!ready ? (
         <div className="mb-4 rounded-lg border border-border bg-surface-2/50 px-3 py-2 text-[10px] text-subtle">
           Loading saved completion state…
         </div>
       ) : null}
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon={<Search size={18} />}
-          title="No matching concepts"
-          description="Try a broader search term or switch back to all categories."
-          action={
-            <button
-              type="button"
-              onClick={reset}
-              className="text-xs font-medium text-primary hover:underline"
+      <div className="space-y-4">
+        {grouped.map(({ category: group, items }) => {
+          const completion = categoryCompletion(state, group.id);
+          const isCollapsed = Boolean(collapsed[group.id]);
+          return (
+            <section
+              key={group.id}
+              id={`category-${group.id}`}
+              aria-labelledby={`category-${group.id}-title`}
+              className="scroll-mt-24 overflow-hidden rounded-xl border border-border bg-surface"
             >
-              Reset search and filters
-            </button>
-          }
-        />
-      ) : (
-        <div className="space-y-4">
-          {grouped.map(({ category: group, items }) => {
-            const completion = categoryCompletion(state, group.id);
-            const isCollapsed = !hasFilters && Boolean(collapsed[group.id]);
-            return (
-              <section
-                key={group.id}
-                id={`category-${group.id}`}
-                aria-labelledby={`category-${group.id}-title`}
-                className="scroll-mt-24 overflow-hidden rounded-xl border border-border bg-surface"
+              <button
+                type="button"
+                onClick={() =>
+                  setCollapsed((current) => ({
+                    ...current,
+                    [group.id]: !current[group.id],
+                  }))
+                }
+                className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-surface-2/50"
+                aria-expanded={!isCollapsed}
+                aria-controls={`category-${group.id}-content`}
               >
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCollapsed((current) => ({
-                      ...current,
-                      [group.id]: !current[group.id],
-                    }))
-                  }
-                  className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-surface-2/50"
-                  aria-expanded={!isCollapsed}
-                  aria-controls={`category-${group.id}-content`}
-                >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-surface-2 font-mono text-[10px] text-subtle">
-                    {String(group.order).padStart(2, "0")}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2
-                        id={`category-${group.id}-title`}
-                        className="text-sm font-semibold tracking-tight text-foreground"
-                      >
-                        {group.title}
-                      </h2>
-                      <Badge
-                        variant={completion.percent === 100 ? "success" : "neutral"}
-                      >
-                        {completion.completed} of {completion.total} completed
-                      </Badge>
-                    </div>
-                    <p className="mt-1 text-xs leading-5 text-muted">
-                      {group.description}
-                    </p>
-                    <ProgressBar
-                      value={completion.percent}
-                      tone={completion.percent === 100 ? "success" : "primary"}
-                      className="mt-2 h-1 max-w-xs"
-                      label={`${group.title} completion`}
-                    />
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-surface-2 font-mono text-[10px] text-subtle">
+                  {String(group.order).padStart(2, "0")}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2
+                      id={`category-${group.id}-title`}
+                      className="text-sm font-semibold tracking-tight text-foreground"
+                    >
+                      {group.title}
+                    </h2>
+                    <Badge
+                      variant={completion.percent === 100 ? "success" : "neutral"}
+                    >
+                      {completion.completed} of {completion.total} completed
+                    </Badge>
                   </div>
-                  <ChevronDown
-                    size={15}
-                    className={cn(
-                      "mt-1 shrink-0 text-subtle transition-transform",
-                      !isCollapsed && "rotate-180",
-                    )}
+                  <p className="mt-1 text-xs leading-5 text-muted">
+                    {group.description}
+                  </p>
+                  <ProgressBar
+                    value={completion.percent}
+                    tone={completion.percent === 100 ? "success" : "primary"}
+                    className="mt-2 h-1 max-w-xs"
+                    label={`${group.title} completion`}
                   />
-                </button>
+                </div>
+                <ChevronDown
+                  size={15}
+                  className={cn(
+                    "mt-1 shrink-0 text-subtle transition-transform",
+                    !isCollapsed && "rotate-180",
+                  )}
+                />
+              </button>
 
-                {!isCollapsed ? (
-                  <div
-                    id={`category-${group.id}-content`}
-                    className="divide-y divide-border border-t border-border"
-                  >
-                    {items.map((concept) => (
-                      <ConceptRow
-                        key={concept.id}
-                        concept={concept}
-                        completed={isConceptComplete(state, concept.id)}
-                        onToggle={(completed) =>
-                          setConceptCompleted(concept.id, completed)
-                        }
-                        onOpen={(kind) =>
-                          setResource({ kind, conceptId: concept.id })
-                        }
-                      />
-                    ))}
-                  </div>
-                ) : null}
-              </section>
-            );
-          })}
-        </div>
-      )}
+              {!isCollapsed ? (
+                <div
+                  id={`category-${group.id}-content`}
+                  className="divide-y divide-border border-t border-border"
+                >
+                  {items.map((concept) => (
+                    <ConceptRow
+                      key={concept.id}
+                      concept={concept}
+                      completed={isConceptComplete(state, concept.id)}
+                      onToggle={(completed) =>
+                        setConceptCompleted(concept.id, completed)
+                      }
+                      onOpen={(kind) =>
+                        setResource({ kind, conceptId: concept.id })
+                      }
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </section>
+          );
+        })}
+      </div>
 
       <p className="mt-8 border-t border-border pt-4 text-[10px] leading-5 text-subtle">
         Work through the categories in order. Checking a concept only records your
