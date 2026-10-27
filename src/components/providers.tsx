@@ -29,6 +29,8 @@ import {
   THEME_STORAGE_KEY,
   type StateStorage,
 } from "@/lib/storage";
+import { isFirebaseConfigured } from "@/lib/firebase";
+import { FirestoreStorage } from "@/lib/firestore-storage";
 import { createReviewRecord, scheduleReview } from "@/lib/review";
 import { emptyTopicProgress } from "@/lib/progress";
 import { uid } from "@/lib/utils";
@@ -193,7 +195,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    const storage = createBrowserStorage();
+
+    // Prefer Firestore when Firebase is configured; fall back to IndexedDB/localStorage.
+    // The anonymous user ID is stable per browser via localStorage.
+    const createStorage = (): StateStorage => {
+      if (isFirebaseConfigured()) {
+        let userId = "";
+        try {
+          userId = window.localStorage.getItem("deep-systems:firebase-uid") ?? "";
+          if (!userId) {
+            userId = `anon-${Math.random().toString(36).slice(2)}`;
+            window.localStorage.setItem("deep-systems:firebase-uid", userId);
+          }
+        } catch {
+          userId = "anon-default";
+        }
+        return new FirestoreStorage(userId);
+      }
+      return createBrowserStorage();
+    };
+
+    const storage = createStorage();
     storageRef.current = storage;
     storage
       .load()
@@ -215,8 +237,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setReady(true);
         setStorageError(
           error instanceof Error
-            ? `Could not open local storage: ${error.message}`
-            : "Could not open local storage.",
+            ? `Could not open storage: ${error.message}`
+            : "Could not open storage.",
         );
       });
     return () => {
